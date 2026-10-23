@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Outsome US Track 지출 내역</title>
+<meta name="description" content="Outsome US Track 이벤트 지출 내역: 일자별·분류별 지출과 주문·영수증 품목">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BDO+Grotesk:wght@400;500;700&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Outsome palette: paper beige, ink black, signal orange. */
+:root {
+  --paper: #F6F4F0; --paper-2: #EFEBE3; --paper-3: #E9E6DF;
+  --ink: #191918; --ink-2: #4A4945; --mute: #8A8883;
+  --orange: #F56A1D; --orange-text: #B4390B; --red: #D7261E;
+  --line: rgba(25,25,24,.16); --grid: rgba(25,25,24,.10); --beige-dark: #C9C2B4;
+  --font: "BDO Grotesk", "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+.wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 24px; }
+.num { font-variant-numeric: tabular-nums; }
+header.top { border-bottom: 2px solid var(--ink); padding-bottom: 16px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--orange-text); font-weight: 700; margin: 0 0 6px; }
+h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+.take { color: var(--ink-2); margin: 6px 0 0; max-width: 62ch; }
+.take b { color: var(--ink); font-weight: 700; }
+.take b.hi { color: var(--orange-text); }
+.status { font-size: 12.5px; color: var(--mute); display: flex; align-items: center; gap: 10px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mute); display: inline-block; margin-right: 6px; }
+.dot.ok { background: #2E8B57; } .dot.bad { background: var(--red); }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.btn { background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 12.5px; }
+.btn:hover { border-color: var(--ink); }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; }
+.card { background: var(--paper-2); border: 1px solid var(--line); border-radius: 12px; padding: 20px; min-width: 0; }
+.kpi .lbl { font-size: 12.5px; color: var(--ink-2); letter-spacing: .02em; }
+.kpi .val { font-size: clamp(26px, 3.4vw, 34px); font-weight: 700; letter-spacing: -0.02em; margin-top: 6px; min-height: 1.2em; }
+.kpi .sub { font-size: 12px; color: var(--mute); margin-top: 4px; }
+.kpi.dark { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.kpi.dark .lbl, .kpi.dark .sub { color: rgba(246,244,240,.72); }
+.kpi.dark .val { color: var(--orange); }
+
+.card h2 { font-size: 17px; font-weight: 700; margin: 0; }
+.note { font-size: 12.5px; color: var(--mute); margin: 4px 0 14px; }
+.cardhead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--ink-2); margin-bottom: 8px; }
+.sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+.chart { position: relative; min-height: 280px; }
+.chart svg { display: block; }
+.tip { position: absolute; z-index: 3; background: var(--ink); color: var(--paper); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; pointer-events: none; min-width: 180px; max-width: 260px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.tip .d { color: rgba(246,244,240,.72); margin-bottom: 4px; }
+.tip .r { display: flex; gap: 6px; align-items: baseline; }
+.tip .r span:nth-child(2) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.tip .t { border-top: 1px solid rgba(246,244,240,.24); margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 700; }
+
+.chip { border: 1px solid var(--orange); color: var(--orange-text); background: transparent; border-radius: 999px; padding: 3px 12px; font-size: 12.5px; }
+.chip:hover { background: var(--orange); color: #fff; }
+.orders { display: grid; gap: 12px; }
+.order { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--paper); }
+.ohead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding: 10px 14px; background: var(--paper-3); border-bottom: 1px solid var(--line); }
+.ohead .t { font-weight: 700; }
+.ohead .no { font-size: 12px; color: var(--mute); margin-left: 8px; overflow-wrap: anywhere; }
+.ohead .s { font-size: 12.5px; color: var(--ink-2); }
+.ohead .s b { color: var(--ink); }
+
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 12px; }
+.bars { display: grid; gap: 10px; min-height: 120px; align-content: start; }
+.brow { display: grid; grid-template-columns: minmax(0, 8rem) minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.bname { overflow-wrap: anywhere; }
+.track { height: 10px; border-radius: 5px; background: var(--grid); overflow: hidden; }
+.bar { height: 100%; border-radius: 5px; }
+.bval { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bval small { color: var(--mute); margin-left: 4px; font-size: 12px; }
+
+.tablewrap { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.t th { position: sticky; top: 0; background: var(--paper-2); text-align: left; font-weight: 500; color: var(--mute); font-size: 12.5px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.order table.t th { background: var(--paper); position: static; }
+table.t td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+table.t tr:last-child td { border-bottom: 0; }
+table.t .r { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+table.t .m { color: var(--mute); font-size: 12.5px; }
+@media (max-width: 560px) { .hide-sm { display: none; } .card { padding: 16px; } }
+.empty { color: var(--mute); font-size: 13px; padding: 12px 0; }
+.skel { background: linear-gradient(90deg, var(--paper-3), #F1EEE8, var(--paper-3)); background-size: 200% 100%; border-radius: 6px; color: transparent !important; animation: sh 1.4s infinite linear; }
+@keyframes sh { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+.err { border-radius: 10px; background: #FBE7DC; color: var(--ink); padding: 12px 14px; font-size: 13.5px; }
+footer { font-size: 12px; color: var(--mute); border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Outsome US Track · 10/19 – 10/31</p>
+      <h1>이벤트 지출 내역</h1>
+      <p class="take" id="take">지출 내역을 불러오는 중이에요.</p>
+    </div>
+    <div class="status"><span id="status"><span class="dot"></span>불러오는 중</span><button class="btn" id="reload" type="button">새로고침</button></div>
+  </header>
+
+  <div id="error" class="err" hidden></div>
+
+  <section class="kpis" aria-label="전체 기간 요약">
+    <div class="card kpi dark"><div class="lbl">총 지출 · 전체 기간</div><div class="val num skel" id="k-total">$0,000.00</div><div class="sub">사전 준비 포함, Amazon은 세전 금액</div></div>
+    <div class="card kpi"><div class="lbl">하루 평균</div><div class="val num skel" id="k-avg">$000.00</div><div class="sub">지출이 있었던 날 기준</div></div>
+    <div class="card kpi"><div class="lbl">지출한 날</div><div class="val num skel" id="k-days">0</div><div class="sub">일</div></div>
+    <div class="card kpi"><div class="lbl">1인당 평균</div><div class="val num skel" id="k-person">$000.00</div><div class="sub">총 지출 ÷ 참가 인원 12명</div></div>
+  </section>
+
+  <section class="card" id="daily">
+    <h2>일자별 지출</h2>
+    <p class="note">끼니·장보기별로 쌓았어요. 막대를 누르면 그날 내역만 아래에 보여요.</p>
+    <div class="legend" id="legend"></div>
+    <div class="chart skel" id="chart"></div>
+  </section>
+
+  <section class="card" id="orders">
+    <div class="cardhead"><h2 id="orders-title">주문·영수증 품목</h2><button class="chip" id="orders-chip" type="button" hidden></button></div>
+    <p class="note" id="orders-note">위 막대에서 날짜를 누르면 그날 지출에 연결된 주문·영수증 품목만 보여요.</p>
+    <div class="orders" id="orders-list"><div class="skel" style="height:120px"></div></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card" id="cats">
+      <div class="cardhead"><h2>분류별 지출</h2><span class="note" id="cats-scope">전체 기간</span></div>
+      <p class="note">식당은 외식, 장보기는 품목 분류대로 나눴어요.</p>
+      <div class="bars" id="cats-list"><div class="skel" style="height:100px"></div></div>
+    </section>
+    <section class="card" id="places">
+      <div class="cardhead"><h2>지출처별 합계</h2><span class="note" id="places-scope">전체 기간</span></div>
+      <div class="bars" id="places-list"><div class="skel" style="height:100px"></div></div>
+    </section>
+  </div>
+
+  <section class="card" id="entries">
+    <div class="cardhead"><h2>지출 내역</h2><button class="chip" id="entries-chip" type="button" hidden></button></div>
+    <p class="note" id="entries-note">시트 상단 표에 적힌 줄 하나가 한 건이에요.</p>
+    <div class="tablewrap">
+      <table class="t">
+        <thead><tr><th>날짜</th><th>구분</th><th>분류</th><th>지출처</th><th class="r">금액</th><th class="hide-sm">메모</th></tr></thead>
+        <tbody id="entries-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>데이터: Outsome US Track 지출 시트(Expense 탭)를 열 때마다 바로 읽어와요. 시트를 고치면 몇 분 안에 반영돼요. <span id="fetched"></span></footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+(() => {
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRQLIIn_uw7HO40DZR3o0XkBLyONMVR8vPGk2gb3wvywcB8Th5iWYWm-92cc0FgDW1uOfrHnvA48I_C/pub?gid=353144416&single=true&output=csv';
+const PEOPLE = 12;
+const PROGRAM_START = '10/19';
+const MEAL_ORDER = ['사전 준비', '아침', '점심', '저녁', '간식', '장보기'];
+const MEAL_COLORS = { '사전 준비': '#C9C2B4', '아침': '#F9B27E', '점심': '#8A8883', '저녁': '#191918', '간식': '#B4390B', '장보기': '#F56A1D' };
+const CAT_COLORS = { '식사': '#191918', '외식': '#F56A1D', '다과': '#B4390B', '생필품': '#C9C2B4' };
+const GROCERY = ['자갈치', '트레이더', 'trader', 'safeway', '세이프웨이', 'costco', '코스트코', '국제', 'kukje', 'h mart', 'hmart', '한아름', 'whole foods', '홀푸드', '99 ranch', 'amazon', 'weee', 'target', '타겟', 'walmart', '월마트', '마트', 'market'];
+const $ = (id) => document.getElementById(id);
+const usd = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const usd0 = (n) => '$' + Math.round(n).toLocaleString('en-US');
+const r2 = (x) => Math.round(x * 100) / 100;
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+let state = { spend: [], items: [], split: [], day: null };
+try { const h = decodeURIComponent(location.hash.slice(1)); if (/^\d{1,2}\/\d{1,2}$/.test(h)) state.day = h; } catch (e) {}
+
+// ---------- CSV ----------
+function parseCSV(text) {
+  const rows = []; let row = []; let cell = ''; let q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+// ---------- sheet → rows ----------
+const iso = (md) => { const [m, d] = md.split('/').map(Number); return '2026-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0'); };
+function readSpend(values) {
+  const MEALS = [['Brekkie', '아침'], ['Lunch', '점심'], ['Dinner', '저녁'], ['Sweets', '간식'], ['Grocery', '장보기']];
+  const rows = [];
+  const parse = (text, day, meal, memo) => {
+    let last = null, header = '', name = '';
+    String(text || '').split('\n').forEach((raw) => {
+      const line = raw.trim();
+      if (!line) return;
+      const dm = line.match(/^(\d{1,2})일/);
+      if (dm && line.indexOf('$') === -1) { if (memo) day = '10/' + Number(dm[1]); else header = line; last = null; name = ''; return; }
+      const hits = [...line.matchAll(/([^$]*?)\$\s*([0-9][0-9,]*(?:\.[0-9]+)?)/g)];
+      if (!hits.length) {
+        if (line.startsWith('(') && last) last.note = (last.note ? last.note + ' ' : '') + line;
+        else name = line.replace(/^[<\[]|[>\]]$/g, '').trim();
+        return;
+      }
+      hits.forEach((h) => {
+        if (!day) return;
+        const own = h[1].replace(/[:：\s]+$/, '').replace(/^[<\[]|[>\]]$/g, '').trim();
+        last = { day, day_iso: iso(day), meal, place: own || name || '이름 없음', amount: Number(h[2].replace(/,/g, '')), note: header };
+        rows.push(last);
+      });
+    });
+  };
+  let dates = null;
+  for (const row of values) {
+    const c = row.map((x) => (x == null ? '' : String(x)));
+    const b = (c[1] || '').trim();
+    if (b === '날짜') break;
+    const c2 = (c[2] || '').trim();
+    if (!b && /^(First Day\s*\()?\d{1,2}\/\d{1,2}/.test(c2)) { dates = c.map((x, i) => (i >= 2 ? ((x.match(/\d{1,2}\/\d{1,2}/) || [])[0] || null) : null)); continue; }
+    if ((c[0] || '').trim()) parse(c[0], null, '사전 준비', true);
+    const m = MEALS.find(([k]) => b.replace(/\s+/g, ' ').startsWith(k));
+    if (!m || !dates) continue;
+    for (let i = 2; i < c.length; i++) if (dates[i] && c[i].trim()) parse(c[i], dates[i], m[1], false);
+  }
+  rows.forEach((r, i) => { r.entry = String(i + 1); });
+  return rows;
+}
+function readItems(values) {
+  const num = (x) => { const s = String(x || '').trim(); const n = Number(s.replace(/[^0-9.\-]/g, '')); return s === '' || isNaN(n) ? null : n; };
+  const rows = []; let inList = false;
+  values.forEach((row, i) => {
+    const c = row.map((x) => (x == null ? '' : String(x).trim()));
+    if (!inList) { if (c[1] === '날짜' && c[2] === '구매처') inList = true; return; }
+    if (!c[3] || !c[4]) return;
+    rows.push({ line: String(i + 1), day: c[1], vendor: c[2], order: c[3], item: c[4], category: c[5], qty: num(c[6]), unit: num(c[7]), amount: num(c[8]), paid: c[9] || '' });
+  });
+  return rows;
+}
+const paidUsd = (p) => { const m = String(p || '').match(/^\$\s*([0-9][0-9,]*(?:\.[0-9]+)?)/); return m ? Number(m[1].replace(/,/g, '')) : null; };
+function orderGroups(items) {
+  const m = new Map();
+  items.forEach((r) => {
+    const o = m.get(r.order) || { order: r.order, vendor: r.vendor, day: r.day, items: [], total: 0, paid: '', cats: {} };
+    o.items.push(r); o.total += Number(r.amount) || 0;
+    if (!o.paid && r.paid) o.paid = r.paid;
+    o.cats[r.category] = (o.cats[r.category] || 0) + (Number(r.amount) || 0);
+    m.set(r.order, o);
+  });
+  return [...m.values()].map((o) => ({ ...o, total: r2(o.total) }));
+}
+function linkedOrders(entry, orders) {
+  const m = String(entry.note || '').match(/(\d{1,2})일\s*오더/);
+  const orderDay = m ? entry.day.split('/')[0] + '/' + Number(m[1]) : entry.day;
+  return orders.filter((o) => (o.vendor === entry.place && o.day === orderDay)
+    || (o.day === entry.day && paidUsd(o.paid) !== null && Math.abs(paidUsd(o.paid) - entry.amount) < 0.005));
+}
+function splitEntries(spend, orders) {
+  const isGrocery = (p) => GROCERY.some((g) => String(p).toLowerCase().includes(g));
+  const out = [];
+  spend.forEach((r) => {
+    const linked = linkedOrders(r, orders);
+    const total = linked.reduce((s, o) => s + o.total, 0);
+    if (linked.length && total > 0) {
+      const cats = {};
+      linked.forEach((o) => Object.entries(o.cats).forEach(([c, v]) => { cats[c] = (cats[c] || 0) + v; }));
+      Object.entries(cats).forEach(([c, v]) => out.push({ entry: r.entry, day: r.day, category: c, amount: r2(r.amount * v / total) }));
+      return;
+    }
+    let c;
+    if (r.meal === '간식') c = '다과';
+    else if (['아침', '점심', '저녁'].includes(r.meal)) c = isGrocery(r.place) ? '식사' : '외식';
+    else if (r.meal === '장보기') c = '식사';
+    else c = isGrocery(r.place) ? '식사' : (/(음료|탄산|커피|간식|과자|쿠키|디저트|아이스크림)/.test(r.place) ? '다과' : '생필품');
+    out.push({ entry: r.entry, day: r.day, category: c, amount: r.amount });
+  });
+  return out;
+}
+function sumBy(rows, key, val = 'amount') {
+  const m = new Map();
+  rows.forEach((r) => { const k = r[key]; const o = m.get(k) || { key: k, total: 0, count: 0 }; o.total += Number(r[val]) || 0; o.count += 1; m.set(k, o); });
+  return [...m.values()].map((o) => ({ ...o, total: r2(o.total) })).sort((a, b) => b.total - a.total);
+}
+
+// ---------- render ----------
+function setDay(d) {
+  state.day = d;
+  try { history.replaceState(null, '', d ? '#' + encodeURIComponent(d) : location.pathname + location.search); } catch (e) {}
+  render();
+}
+function renderSummary() {
+  const s = state.spend;
+  const total = s.reduce((a, r) => a + r.amount, 0);
+  const days = new Set(s.map((r) => r.day_iso)).size;
+  const places = sumBy(s, 'place');
+  [['k-total', usd(total)], ['k-avg', usd(days ? total / days : 0)], ['k-days', String(days)], ['k-person', usd(total / PEOPLE)]]
+    .forEach(([id, v]) => { $(id).textContent = v; $(id).classList.remove('skel'); });
+  const take = $('take');
+  take.replaceChildren();
+  if (!s.length) { take.textContent = '아직 기록된 지출이 없어요.'; return; }
+  const b1 = el('b', 'hi num', usd(total)); const b2 = el('b', '', places[0].key); const b3 = el('b', 'num', usd(places[0].total));
+  take.append('지금까지 ', b1, '를 썼어요. 가장 많이 쓴 곳은 ', b2, '(', b3, ')예요.');
+}
+function renderChart() {
+  const box = $('chart'); const legend = $('legend');
+  box.classList.remove('skel'); box.replaceChildren();
+  const s = state.spend;
+  if (!s.length) { box.append(el('div', 'empty', '아직 시트 상단 표에 적힌 지출이 없어요.')); legend.replaceChildren(); return; }
+  const byDayMeal = new Map();
+  s.forEach((r) => { const k = r.day_iso + '|' + r.meal; byDayMeal.set(k, (byDayMeal.get(k) || 0) + r.amount); });
+  const dayList = [...new Map(s.map((r) => [r.day_iso, r.day])).entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, d]) => d);
+  const dayIso = Object.fromEntries(s.map((r) => [r.day, r.day_iso]));
+  const meals = MEAL_ORDER.filter((m) => s.some((r) => r.meal === m));
+  legend.replaceChildren(...meals.map((m) => { const sp = el('span'); const sw = el('i', 'sw'); sw.style.background = MEAL_COLORS[m]; sp.append(sw, m); return sp; }));
+  const totals = dayList.map((d) => ({ day: d, total: r2(s.filter((r) => r.day === d).reduce((a, r) => a + r.amount, 0)) }));
+  const pivot = dayList.map((d) => { const o = { day: d }; meals.forEach((m) => { o[m] = byDayMeal.get(dayIso[d] + '|' + m) || 0; }); return o; });
+
+  const W = Math.max(300, box.clientWidth || 700), H = 270;
+  const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', '일자별 지출 막대 그래프');
+  const maxV = d3.max(totals, (d) => d.total) || 1;
+  const y = d3.scaleLinear([0, maxV * 1.14], [H - 28, 24]).nice();
+  const ticks = y.ticks(4);
+  const probe = svg.append('g').style('font-size', '12px').style('font-family', 'inherit');
+  const measure = (t) => { const n = probe.append('text').text(t); const w = n.node().getComputedTextLength(); n.remove(); return w; };
+  const ml = d3.max(ticks, (v) => measure(usd0(v))) + 10;
+  const dayW = d3.max(dayList, (d) => measure(d)) + 8;
+  const totW = d3.max(totals, (d) => measure(usd0(d.total))) + 6;
+  probe.remove();
+  const x = d3.scaleBand(dayList, [ml, W - 6]).padding(0.28);
+  const bw = Math.min(x.bandwidth(), 44), off = (x.bandwidth() - bw) / 2;
+  const picked = state.day;
+  const g0 = svg.append('g').style('font-size', '12px');
+  g0.selectAll('line').data(ticks).join('line').attr('x1', ml).attr('x2', W - 6).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).attr('stroke', (d) => (d === 0 ? 'rgba(25,25,24,.82)' : 'rgba(25,25,24,.10)'));
+  g0.selectAll('text').data(ticks).join('text').attr('x', ml - 8).attr('y', (d) => y(d)).attr('dy', '0.32em').attr('text-anchor', 'end').attr('fill', '#8A8883').text((d) => usd0(d));
+  const every = Math.max(1, Math.ceil(dayW / x.step()));
+  svg.append('g').style('font-size', '12px').selectAll('text').data(dayList.filter((d, i) => i % every === 0 || d === PROGRAM_START)).join('text')
+    .attr('x', (d) => x(d) + x.bandwidth() / 2).attr('y', H - 8).attr('text-anchor', 'middle')
+    .attr('font-weight', (d) => (d === PROGRAM_START || d === picked ? 700 : null))
+    .attr('fill', (d) => (d === PROGRAM_START ? '#D7261E' : d === picked ? '#191918' : '#8A8883')).text((d) => d);
+  if (dayList.includes(PROGRAM_START)) {
+    const sx = x(PROGRAM_START) - (x.step() - x.bandwidth()) / 2;
+    svg.append('line').attr('x1', sx).attr('x2', sx).attr('y1', 4).attr('y2', H - 24).attr('stroke', '#D7261E').attr('stroke-width', 1.5).attr('stroke-dasharray', '4 3');
+    const lab = svg.append('text').attr('y', 14).attr('font-weight', 700).attr('fill', '#D7261E').style('font-size', '12px').text('프로그램 시작');
+    const lw = lab.node().getComputedTextLength(); const right = sx + 6 + lw <= W - 4;
+    lab.attr('x', right ? sx + 6 : sx - 6).attr('text-anchor', right ? 'start' : 'end');
+  }
+  const stack = d3.stack().keys(meals)(pivot);
+  const g = svg.append('g');
+  stack.forEach((layer) => {
+    g.append('g').attr('fill', MEAL_COLORS[layer.key]).selectAll('rect').data(layer).join('rect')
+      .attr('x', (d) => x(d.data.day) + off).attr('width', bw).attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1])))
+      .attr('opacity', (d) => (picked && d.data.day !== picked ? 0.3 : 1));
+  });
+  if (totW <= x.step()) {
+    svg.append('g').style('font-size', '12px').selectAll('text').data(totals).join('text')
+      .attr('x', (d) => x(d.day) + x.bandwidth() / 2).attr('y', (d) => y(d.total) - 6).attr('text-anchor', 'middle')
+      .attr('fill', (d) => (picked && d.day !== picked ? '#8A8883' : '#191918')).style('font-variant-numeric', 'tabular-nums').text((d) => usd0(d.total));
+  }
+  const tip = el('div', 'tip'); tip.hidden = true; box.append(tip);
+  const show = (event, d) => {
+    if (event.pointerType === 'touch') return;
+    const es = s.filter((r) => r.day === d.day);
+    tip.replaceChildren(el('div', 'd', d.day + ' · ' + es.length + '건'), ...es.map((r) => { const row = el('div', 'r'); const sw = el('i', 'sw'); sw.style.background = MEAL_COLORS[r.meal]; row.append(sw, el('span', '', r.place + ' (' + r.meal + ')'), el('span', 'num', usd(r.amount))); return row; }));
+    const t = el('div', 't'); t.append(el('span', '', '합계'), el('span', 'num', usd(d.total))); tip.append(t);
+    tip.hidden = false;
+    const rect = box.getBoundingClientRect(); const sc = rect.width / W; const cx = (x(d.day) + x.bandwidth() / 2) * sc;
+    let left = cx + 14; if (left + tip.offsetWidth > rect.width) left = cx - tip.offsetWidth - 14;
+    tip.style.left = Math.max(0, left) + 'px'; tip.style.top = Math.max(0, y(d.total) * sc - 10) + 'px';
+  };
+  svg.append('g').selectAll('rect').data(totals).join('rect')
+    .attr('x', (d) => x(d.day) - (x.step() - x.bandwidth()) / 2).attr('width', x.step()).attr('y', 0).attr('height', H - 24)
+    .attr('fill', 'transparent').style('cursor', 'pointer')
+    .on('pointerenter pointermove', show).on('pointerleave', () => { tip.hidden = true; })
+    .on('click', (event, d) => { tip.hidden = true; setDay(picked === d.day ? null : d.day); });
+}
+function renderOrders() {
+  const box = $('orders-list'); const day = state.day;
+  const chip = $('orders-chip'); chip.hidden = !day; chip.textContent = day ? day + ' 보는 중 ×' : '';
+  $('orders-title').textContent = day ? day + ' 주문·영수증 품목' : '주문·영수증 품목';
+  const orders = orderGroups(state.items);
+  let list = orders;
+  if (day) {
+    const es = state.spend.filter((r) => r.day === day);
+    const keys = new Set(); es.forEach((e) => linkedOrders(e, orders).forEach((o) => keys.add(o.order)));
+    list = orders.filter((o) => keys.has(o.order));
+    $('orders-note').textContent = list.length ? day + ' 지출에 연결된 온라인 주문과 영수증이에요. 금액은 품목 기준이고, 실결제액은 따로 적었어요.' : day + '에는 품목이 기록된 주문·영수증이 없어요. 지출 금액은 아래 지출 내역에 있어요.';
+  } else {
+    $('orders-note').textContent = '위 막대에서 날짜를 누르면 그날 지출에 연결된 주문·영수증 품목만 보여요.';
+  }
+  box.replaceChildren();
+  if (!list.length) { if (!day) box.append(el('div', 'empty', '아직 기록된 주문·영수증 품목이 없어요.')); return; }
+  const key = (d) => { const [m, dd] = String(d).split('/').map(Number); return (m || 0) * 100 + (dd || 0); };
+  list.sort((a, b) => key(b.day) - key(a.day));
+  list.forEach((o) => {
+    const card = el('div', 'order');
+    const head = el('div', 'ohead');
+    const t = el('div'); t.append(el('span', 't', o.day + ' · ' + o.vendor), el('span', 'no', '#' + o.order));
+    const sm = el('div', 's'); sm.append(o.items.length + '개 품목 · ', el('b', 'num', usd(o.total)));
+    const p = String(o.paid || '').trim();
+    if (p) sm.append(' · 실결제 ' + (/^[0-9.,]+$/.test(p) ? '₩' + Number(p.replace(/,/g, '')).toLocaleString('en-US') : p.replace(/\s*\(.*$/, '')));
+    head.append(t, sm);
+    const wrap = el('div', 'tablewrap'); wrap.style.maxHeight = 'none';
+    const tb = el('table', 't');
+    const th = el('thead'); const hr = el('tr');
+    [['품목', ''], ['분류', 'hide-sm'], ['수량', 'r'], ['금액', 'r']].forEach(([l, c]) => hr.append(el('th', c, l)));
+    th.append(hr);
+    const body = el('tbody');
+    o.items.forEach((r) => {
+      const tr = el('tr');
+      tr.append(el('td', '', r.item), el('td', 'm hide-sm', r.category || ''), el('td', 'r', r.qty == null ? '' : '×' + r.qty), el('td', 'r', r.amount == null ? '' : usd(r.amount)));
+      body.append(tr);
+    });
+    tb.append(th, body); wrap.append(tb); card.append(head, wrap); box.append(card);
+  });
+}
+function renderBars(boxId, rows, colorOf, withCount) {
+  const box = $(boxId); box.replaceChildren();
+  if (!rows.length) { box.append(el('div', 'empty', '이 날짜에는 기록된 지출이 없어요.')); return; }
+  const max = rows[0].total || 1;
+  rows.forEach((r, i) => {
+    const row = el('div', 'brow');
+    const track = el('div', 'track'); const bar = el('div', 'bar');
+    bar.style.width = Math.max(2, (r.total / max) * 100) + '%'; bar.style.background = colorOf(r, i); track.append(bar);
+    const v = el('div', 'bval', usd(r.total)); if (withCount) v.append(el('small', '', r.count + '건'));
+    row.append(el('div', 'bname', r.key), track, v); box.append(row);
+  });
+}
+function renderEntries() {
+  const day = state.day;
+  const chip = $('entries-chip'); chip.hidden = !day; chip.textContent = day ? day + ' 보는 중 ×' : '';
+  $('entries-note').textContent = day ? day + '에 적힌 지출만 보여요.' : '시트 상단 표에 적힌 줄 하나가 한 건이에요.';
+  const catOf = new Map();
+  state.split.forEach((r) => { const a = catOf.get(r.entry) || []; a.push(r); catOf.set(r.entry, a); });
+  const body = $('entries-body'); body.replaceChildren();
+  state.spend.filter((r) => !day || r.day === day).slice().sort((a, b) => (a.day_iso < b.day_iso ? -1 : a.day_iso > b.day_iso ? 1 : Number(a.entry) - Number(b.entry))).forEach((r) => {
+    const cats = (catOf.get(r.entry) || []).slice().sort((a, b) => b.amount - a.amount).map((c) => c.category).join('·');
+    const tr = el('tr');
+    tr.append(el('td', '', r.day), el('td', '', r.meal), el('td', '', cats), el('td', '', r.place), el('td', 'r', usd(r.amount)), el('td', 'm hide-sm', r.note || ''));
+    body.append(tr);
+  });
+}
+function render() {
+  const scope = state.day ? state.day : '전체 기간';
+  $('cats-scope').textContent = scope; $('places-scope').textContent = scope;
+  renderSummary(); renderChart(); renderOrders();
+  const splits = state.day ? state.split.filter((r) => r.day === state.day) : state.split;
+  renderBars('cats-list', sumBy(splits, 'category'), (r) => CAT_COLORS[r.key] || '#C9C2B4', false);
+  const sp = state.day ? state.spend.filter((r) => r.day === state.day) : state.spend;
+  renderBars('places-list', sumBy(sp, 'place'), (r, i) => (i === 0 ? '#F56A1D' : '#C9C2B4'), true);
+  renderEntries();
+}
+
+// ---------- load ----------
+async function load() {
+  $('status').innerHTML = '<span class="dot"></span>불러오는 중';
+  $('error').hidden = true;
+  try {
+    const res = await fetch(CSV_URL + '&t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const values = parseCSV(await res.text());
+    state.spend = readSpend(values);
+    state.items = readItems(values);
+    state.split = splitEntries(state.spend, orderGroups(state.items));
+    render();
+    const now = new Date();
+    $('status').innerHTML = '<span class="dot ok"></span>시트와 연결됨';
+    $('fetched').textContent = '· 불러온 시각 ' + now.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    $('status').innerHTML = '<span class="dot bad"></span>불러오지 못했어요';
+    const err = $('error');
+    err.textContent = '지출 시트를 불러오지 못했어요. 잠시 후 새로고침을 눌러 주세요. 계속 안 되면 시트의 "웹에 게시"가 켜져 있는지 확인해 주세요. (' + e.message + ')';
+    err.hidden = false;
+  }
+}
+$('reload').addEventListener('click', load);
+$('orders-chip').addEventListener('click', () => setDay(null));
+$('entries-chip').addEventListener('click', () => setDay(null));
+let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (state.spend.length) renderChart(); }, 150); });
+load();
+})();
+</script>
+</body>
+</html>

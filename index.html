@@ -271,7 +271,7 @@ function linkedOrders(entry, orders) {
     || (o.day === entry.day && paidUsd(o.paid) !== null && Math.abs(paidUsd(o.paid) - entry.amount) < 0.005));
 }
 function splitEntries(spend, orders) {
-  const isGrocery = (p) => GROCERY.some((g) => String(p).toLowerCase().includes(g));
+  const isGrocery = (p) => !/(카페|cafe|café|식당|레스토랑|restaurant|푸드코트)/i.test(String(p)) && GROCERY.some((g) => String(p).toLowerCase().includes(g));
   const out = [];
   spend.forEach((r) => {
     const linked = linkedOrders(r, orders);

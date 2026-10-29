@@ -266,8 +266,13 @@ function orderGroups(items) {
 function linkedOrders(entry, orders) {
   const m = String(entry.note || '').match(/(\d{1,2})일\s*오더/);
   const orderDay = m ? entry.day.split('/')[0] + '/' + Number(m[1]) : entry.day;
-  return orders.filter((o) => (o.vendor === entry.place && o.day === orderDay)
-    || (o.day === entry.day && paidUsd(o.paid) !== null && Math.abs(paidUsd(o.paid) - entry.amount) < 0.005));
+  const same = (a, b) => a !== null && Math.abs(a - b) < 0.005;
+  // 1) 실결제액이 정확히 같은 영수증이 있으면 그것만 연결
+  const exact = orders.filter((o) => o.day === entry.day && same(paidUsd(o.paid), entry.amount));
+  if (exact.length) return exact;
+  // 2) 아니면 같은 구매처·날짜 주문 중, 다른 지출 항목과 금액이 정확히 맞는 영수증은 빼고 연결
+  const claimed = (o) => (state.spend || []).some((e) => e !== entry && e.day === o.day && same(paidUsd(o.paid), e.amount));
+  return orders.filter((o) => o.vendor === entry.place && o.day === orderDay && !claimed(o));
 }
 function splitEntries(spend, orders) {
   const isGrocery = (p) => !/(카페|cafe|café|식당|레스토랑|restaurant|푸드코트)/i.test(String(p)) && GROCERY.some((g) => String(p).toLowerCase().includes(g));

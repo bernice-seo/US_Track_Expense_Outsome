@@ -122,7 +122,7 @@ footer { font-size: 12px; color: var(--mute); border-top: 1px solid var(--line);
 
   <section class="card" id="daily">
     <h2>일자별 지출</h2>
-    <p class="note">끼니·장보기별로 쌓았어요. 막대를 누르면 그날 내역만 아래에 보여요.</p>
+    <p class="note">끼니·장보기별로 쌓았어요. 막대를 누르면 그날 내역만 아래에 보여요. 흐린 10/17은 프로그램 전 참고용이라 총액·평균에는 넣지 않았어요.</p>
     <div class="legend" id="legend"></div>
     <div class="chart skel" id="chart"></div>
   </section>
@@ -165,7 +165,7 @@ footer { font-size: 12px; color: var(--mute); border-top: 1px solid var(--line);
 const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRQLIIn_uw7HO40DZR3o0XkBLyONMVR8vPGk2gb3wvywcB8Th5iWYWm-92cc0FgDW1uOfrHnvA48I_C/pub?gid=353144416&single=true&output=csv';
 const PEOPLE = 12;
 const PROGRAM_START = '10/19';
-const EXCLUDE_DAYS = ['10/17']; // 집계에서 뺄 날짜 (시트 기록은 그대로 둠)
+const CHART_ONLY_DAYS = ['10/17']; // 그래프에만 참고로 보이고 총액·평균·표에는 넣지 않는 날짜
 const MEAL_ORDER = ['사전 준비', '아침', '점심', '저녁', '간식', '장보기'];
 const MEAL_COLORS = { '사전 준비': '#C9C2B4', '아침': '#F9B27E', '점심': '#8A8883', '저녁': '#191918', '간식': '#B4390B', '장보기': '#F56A1D' };
 const CAT_COLORS = { '식사': '#191918', '외식': '#F56A1D', '다과': '#B4390B', '생필품': '#C9C2B4' };
@@ -176,7 +176,7 @@ const usd0 = (n) => '$' + Math.round(n).toLocaleString('en-US');
 const r2 = (x) => Math.round(x * 100) / 100;
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
-let state = { spend: [], items: [], split: [], day: null };
+let state = { spend: [], extra: [], items: [], split: [], day: null };
 try { const h = decodeURIComponent(location.hash.slice(1)); if (/^\d{1,2}\/\d{1,2}$/.test(h)) state.day = h; } catch (e) {}
 
 // ---------- CSV ----------
@@ -236,9 +236,8 @@ function readSpend(values) {
     if (!m || !dates) continue;
     for (let i = 2; i < c.length; i++) if (dates[i] && c[i].trim()) parse(c[i], dates[i], m[1], false);
   }
-  const kept = rows.filter((r) => !EXCLUDE_DAYS.includes(r.day));
-  kept.forEach((r, i) => { r.entry = String(i + 1); });
-  return kept;
+  rows.forEach((r, i) => { r.entry = String(i + 1); r.chartOnly = CHART_ONLY_DAYS.includes(r.day); });
+  return rows;
 }
 function readItems(values) {
   const num = (x) => { const s = String(x || '').trim(); const n = Number(s.replace(/[^0-9.\-]/g, '')); return s === '' || isNaN(n) ? null : n; };
@@ -247,7 +246,7 @@ function readItems(values) {
     const c = row.map((x) => (x == null ? '' : String(x).trim()));
     if (!inList) { if (c[1] === '날짜' && c[2] === '구매처') inList = true; return; }
     if (!c[3] || !c[4]) return;
-    if (EXCLUDE_DAYS.includes(c[1])) return;
+    if (CHART_ONLY_DAYS.includes(c[1])) return;
     rows.push({ line: String(i + 1), day: c[1], vendor: c[2], order: c[3], item: c[4], category: c[5], qty: num(c[6]), unit: num(c[7]), amount: num(c[8]), paid: c[9] || '' });
   });
   return rows;
@@ -319,7 +318,8 @@ function renderSummary() {
 function renderChart() {
   const box = $('chart'); const legend = $('legend');
   box.classList.remove('skel'); box.replaceChildren();
-  const s = state.spend;
+  const s = state.extra.concat(state.spend);
+  const isRef = (d) => CHART_ONLY_DAYS.includes(d);
   if (!s.length) { box.append(el('div', 'empty', '아직 시트 상단 표에 적힌 지출이 없어요.')); legend.replaceChildren(); return; }
   const byDayMeal = new Map();
   s.forEach((r) => { const k = r.day_iso + '|' + r.meal; byDayMeal.set(k, (byDayMeal.get(k) || 0) + r.amount); });
@@ -338,7 +338,8 @@ function renderChart() {
   const probe = svg.append('g').style('font-size', '12px').style('font-family', 'inherit');
   const measure = (t) => { const n = probe.append('text').text(t); const w = n.node().getComputedTextLength(); n.remove(); return w; };
   const ml = d3.max(ticks, (v) => measure(usd0(v))) + 10;
-  const dayW = d3.max(dayList, (d) => measure(d)) + 8;
+  const dayLabel = (d) => (isRef(d) ? d + ' 참고' : d);
+  const dayW = d3.max(dayList, (d) => measure(dayLabel(d))) + 8;
   const totW = d3.max(totals, (d) => measure(usd0(d.total))) + 6;
   probe.remove();
   const x = d3.scaleBand(dayList, [ml, W - 6]).padding(0.28);
@@ -351,7 +352,7 @@ function renderChart() {
   svg.append('g').style('font-size', '12px').selectAll('text').data(dayList.filter((d, i) => i % every === 0 || d === PROGRAM_START)).join('text')
     .attr('x', (d) => x(d) + x.bandwidth() / 2).attr('y', H - 8).attr('text-anchor', 'middle')
     .attr('font-weight', (d) => (d === PROGRAM_START || d === picked ? 700 : null))
-    .attr('fill', (d) => (d === PROGRAM_START ? '#D7261E' : d === picked ? '#191918' : '#8A8883')).text((d) => d);
+    .attr('fill', (d) => (d === PROGRAM_START ? '#D7261E' : d === picked ? '#191918' : '#8A8883')).text((d) => dayLabel(d));
   if (dayList.includes(PROGRAM_START)) {
     const sx = x(PROGRAM_START) - (x.step() - x.bandwidth()) / 2;
     svg.append('line').attr('x1', sx).attr('x2', sx).attr('y1', 4).attr('y2', H - 24).attr('stroke', '#D7261E').attr('stroke-width', 1.5).attr('stroke-dasharray', '4 3');
@@ -364,7 +365,7 @@ function renderChart() {
   stack.forEach((layer) => {
     g.append('g').attr('fill', MEAL_COLORS[layer.key]).selectAll('rect').data(layer).join('rect')
       .attr('x', (d) => x(d.data.day) + off).attr('width', bw).attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1])))
-      .attr('opacity', (d) => (picked && d.data.day !== picked ? 0.3 : 1));
+      .attr('opacity', (d) => (isRef(d.data.day) ? 0.45 : picked && d.data.day !== picked ? 0.3 : 1));
   });
   if (totW <= x.step()) {
     svg.append('g').style('font-size', '12px').selectAll('text').data(totals).join('text')
@@ -377,6 +378,7 @@ function renderChart() {
     const es = s.filter((r) => r.day === d.day);
     tip.replaceChildren(el('div', 'd', d.day + ' · ' + es.length + '건'), ...es.map((r) => { const row = el('div', 'r'); const sw = el('i', 'sw'); sw.style.background = MEAL_COLORS[r.meal]; row.append(sw, el('span', '', r.place + ' (' + r.meal + ')'), el('span', 'num', usd(r.amount))); return row; }));
     const t = el('div', 't'); t.append(el('span', '', '합계'), el('span', 'num', usd(d.total))); tip.append(t);
+    if (isRef(d.day)) tip.append(el('div', 'd', '프로그램 전 참고용이라 총액·평균에는 넣지 않았어요.'));
     tip.hidden = false;
     const rect = box.getBoundingClientRect(); const sc = rect.width / W; const cx = (x(d.day) + x.bandwidth() / 2) * sc;
     let left = cx + 14; if (left + tip.offsetWidth > rect.width) left = cx - tip.offsetWidth - 14;
@@ -384,9 +386,9 @@ function renderChart() {
   };
   svg.append('g').selectAll('rect').data(totals).join('rect')
     .attr('x', (d) => x(d.day) - (x.step() - x.bandwidth()) / 2).attr('width', x.step()).attr('y', 0).attr('height', H - 24)
-    .attr('fill', 'transparent').style('cursor', 'pointer')
+    .attr('fill', 'transparent').style('cursor', (d) => (isRef(d.day) ? 'default' : 'pointer'))
     .on('pointerenter pointermove', show).on('pointerleave', () => { tip.hidden = true; })
-    .on('click', (event, d) => { tip.hidden = true; setDay(picked === d.day ? null : d.day); });
+    .on('click', (event, d) => { if (isRef(d.day)) return; tip.hidden = true; setDay(picked === d.day ? null : d.day); });
 }
 function renderOrders() {
   const box = $('orders-list'); const day = state.day;
@@ -473,7 +475,9 @@ async function load() {
     const res = await fetch(CSV_URL + '&t=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const values = parseCSV(await res.text());
-    state.spend = readSpend(values);
+    const all = readSpend(values);
+    state.spend = all.filter((r) => !r.chartOnly);
+    state.extra = all.filter((r) => r.chartOnly);
     state.items = readItems(values);
     state.split = splitEntries(state.spend, orderGroups(state.items));
     render();

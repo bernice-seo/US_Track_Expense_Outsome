@@ -47,6 +47,7 @@ button:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
 .kpi .lbl { font-size: 12.5px; color: var(--ink-2); letter-spacing: .02em; }
 .kpi .val { font-size: clamp(26px, 3.4vw, 34px); font-weight: 700; letter-spacing: -0.02em; margin-top: 6px; min-height: 1.2em; }
 .kpi .sub { font-size: 12px; color: var(--mute); margin-top: 4px; }
+.kpi .hint { color: var(--mute); letter-spacing: 0; }
 .kpi.dark { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .kpi.dark .lbl, .kpi.dark .sub { color: rgba(246,244,240,.72); }
 .kpi.dark .val { color: var(--orange); }
@@ -115,9 +116,9 @@ footer { font-size: 12px; color: var(--mute); border-top: 1px solid var(--line);
 
   <section class="kpis" aria-label="전체 기간 요약">
     <div class="card kpi dark"><div class="lbl">총 지출 · 전체 기간</div><div class="val num skel" id="k-total">$0,000.00</div><div class="sub">10/18 사전 준비부터, 모두 실결제 금액</div></div>
-    <div class="card kpi"><div class="lbl">하루 평균</div><div class="val num skel" id="k-avg">$000.00</div><div class="sub">지출이 있었던 날 기준</div></div>
+    <div class="card kpi"><div class="lbl">하루 평균 <span class="hint">· 지출이 있었던 날 기준</span></div><div class="val num skel" id="k-avg">$000.00</div><div class="sub num" id="k-avg-krw">≈ ₩000,000</div></div>
     <div class="card kpi"><div class="lbl">지출한 날</div><div class="val num skel" id="k-days">0</div><div class="sub">일</div></div>
-    <div class="card kpi"><div class="lbl">1인당 평균</div><div class="val num skel" id="k-person">$000.00</div><div class="sub">총 지출 ÷ 참가 인원 12명</div></div>
+    <div class="card kpi"><div class="lbl">1인당 평균 <span class="hint">· 총 지출 ÷ 참가 인원 12명</span></div><div class="val num skel" id="k-person">$000.00</div><div class="sub num" id="k-person-krw">≈ ₩000,000</div></div>
   </section>
 
   <section class="card" id="daily">
@@ -172,6 +173,8 @@ const CAT_COLORS = { '식사': '#191918', '외식': '#F56A1D', '다과': '#B4390
 const GROCERY = ['자갈치', '트레이더', 'trader', 'safeway', '세이프웨이', 'costco', '코스트코', '국제', 'kukje', 'h mart', 'hmart', '한아름', 'whole foods', '홀푸드', '99 ranch', 'amazon', 'weee', 'target', '타겟', 'walmart', '월마트', '마트', 'market'];
 const $ = (id) => document.getElementById(id);
 const usd = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const KRW_RATE = 1380; // 원화 환산 환율 (₩/$)
+const krw = (n) => '≈ ₩' + Math.round(n * KRW_RATE).toLocaleString('ko-KR') + ' · 환율 ' + KRW_RATE.toLocaleString('ko-KR') + '원';
 const usd0 = (n) => '$' + Math.round(n).toLocaleString('en-US');
 const r2 = (x) => Math.round(x * 100) / 100;
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -312,8 +315,11 @@ function renderSummary() {
   const total = s.reduce((a, r) => a + r.amount, 0);
   const days = new Set(s.map((r) => r.day_iso)).size;
   const places = sumBy(s, 'place');
-  [['k-total', usd(total)], ['k-avg', usd(days ? total / days : 0)], ['k-days', String(days)], ['k-person', usd(total / PEOPLE)]]
+  const avg = days ? total / days : 0, per = total / PEOPLE;
+  [['k-total', usd(total)], ['k-avg', usd(avg)], ['k-days', String(days)], ['k-person', usd(per)]]
     .forEach(([id, v]) => { $(id).textContent = v; $(id).classList.remove('skel'); });
+  $('k-avg-krw').textContent = krw(avg);
+  $('k-person-krw').textContent = krw(per);
   const take = $('take');
   take.replaceChildren();
   if (!s.length) { take.textContent = '아직 기록된 지출이 없어요.'; return; }
